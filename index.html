@@ -1,17 +1,47 @@
+<!-- Azure-specific SSRF Testing Payloads -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SSRF Testing Tool</title>
+    <title>SSRF Testing</title>
 </head>
 <body>
-    <h1>SSRF Testing Tool</h1>
-    <p>This tool uses webhook callbacks for SSRF testing. You can configure the target URL and send requests to check for vulnerabilities.</p>
-    <form action="/webhook" method="POST">
-        <label for="url">Target URL:</label>
-        <input type="text" id="url" name="target_url" required>
-        <button type="submit">Test SSRF</button>
-    </form>
+    <h1>Azure SSRF Testing Payloads</h1>
+    <p>This page contains various payloads for testing Server-Side Request Forgery (SSRF) vulnerabilities on Azure.</p>
+
+    <h2>Testing Payloads</h2>
+    <ul>
+        <li><code>http://169.254.169.254/metadata/instance</code> - Azure Instance Metadata Service</li>
+        <li><code>http://localhost:4200</code> - Localhost service</li>
+        <li><code>http://metadata.google.internal/computeMetadata/v1/instance</code> - Google Cloud metadata</li>
+        <li><code>http://AWSLinkToSomeService</code> - AWS service reference</li>
+        <!-- Add more payloads as needed -->
+    </ul>
+
+    <h2>Functionality Code</h2>
+    <script>
+        // Example functionality to demonstrate handling of SSRF payloads
+        async function testSSRF(url) {
+            try {
+                const response = await fetch(url);
+                const data = await response.text();
+                console.log('Response:', data);
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // Example usage of testSSRF function
+        const payloads = [
+            'http://169.254.169.254/metadata/instance',
+            'http://localhost:4200',
+            'http://metadata.google.internal/computeMetadata/v1/instance',
+            'http://AWSLinkToSomeService',
+        ];
+
+        payloads.forEach(payload => testSSRF(payload));
+    </script>
 </body>
 </html>
