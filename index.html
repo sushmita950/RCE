@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSRF Testing Tool</title>
+</head>
+<body>
+    <h1>SSRF Testing Tool</h1>
+    <p>This tool uses webhook callbacks for SSRF testing. You can configure the target URL and send requests to check for vulnerabilities.</p>
+    <form action="/webhook" method="POST">
+        <label for="url">Target URL:</label>
+        <input type="text" id="url" name="target_url" required>
+        <button type="submit">Test SSRF</button>
+    </form>
+</body>
+</html>
