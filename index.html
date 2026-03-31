@@ -1,47 +1,73 @@
-<!-- Azure-specific SSRF Testing Payloads -->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SSRF Testing</title>
+    <title>Comprehensive SSRF Testing Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .badge {
+            display: inline-block;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 5px;
+            color: white;
+        }
+        .success { background-color: #28a745; }
+        .fail { background-color: #dc3545; }
+    </style>
 </head>
 <body>
-    <h1>Azure SSRF Testing Payloads</h1>
-    <p>This page contains various payloads for testing Server-Side Request Forgery (SSRF) vulnerabilities on Azure.</p>
+    <div class="container">
+        <h1>Comprehensive SSRF Testing Tool</h1>
+        <p>This tool allows for extensive SSRF testing with webhook integration.</p>
 
-    <h2>Testing Payloads</h2>
-    <ul>
-        <li><code>http://169.254.169.254/metadata/instance</code> - Azure Instance Metadata Service</li>
-        <li><code>http://localhost:4200</code> - Localhost service</li>
-        <li><code>http://metadata.google.internal/computeMetadata/v1/instance</code> - Google Cloud metadata</li>
-        <li><code>http://AWSLinkToSomeService</code> - AWS service reference</li>
-        <!-- Add more payloads as needed -->
-    </ul>
+        <button id="testButton">Send Test Payload</button>
+        <div id="results"></div>
+        <div id="badges"></div>
+    </div>
 
-    <h2>Functionality Code</h2>
     <script>
-        // Example functionality to demonstrate handling of SSRF payloads
-        async function testSSRF(url) {
-            try {
-                const response = await fetch(url);
-                const data = await response.text();
-                console.log('Response:', data);
-            } catch (error) {
-                console.error('Error:', error);
-            }
-        }
-
-        // Example usage of testSSRF function
+        const webhookUrl = 'https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94';
         const payloads = [
-            'http://169.254.169.254/metadata/instance',
-            'http://localhost:4200',
-            'http://metadata.google.internal/computeMetadata/v1/instance',
-            'http://AWSLinkToSomeService',
+            { data: 'Azure Payload 1' },
+            { data: 'Azure Payload 2' },
+            { data: 'Azure Payload 3' }
         ];
 
-        payloads.forEach(payload => testSSRF(payload));
+        document.getElementById('testButton').addEventListener('click', async () => {
+            const resultsDiv = document.getElementById('results');
+            const badgesDiv = document.getElementById('badges');
+            resultsDiv.innerHTML = '';  
+            badgesDiv.innerHTML = '';
+
+            for (const payload of payloads) {
+                const response = await fetch(webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const status = response.ok ? 'success' : 'fail';
+                resultsDiv.innerHTML += `<p>Test ${status} for ${JSON.stringify(payload)}</p>`;
+                badgesDiv.innerHTML += `<span class='badge ${status}'>${status.toUpperCase()}</span>`;
+            }
+        });
     </script>
 </body>
 </html>
